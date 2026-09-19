@@ -305,11 +305,11 @@
 
             @page { 
                 size: A4 portrait; 
-                margin: 0.4cm 1.2cm;
+                margin: 1cm 1.2cm;
             }
 
             .print-page-block {
-                height: 287mm;
+                height: 275mm;
                 display: flex !important;
                 flex-direction: column !important;
                 justify-content: space-between !important;
@@ -339,7 +339,7 @@
                 max-width: 7cm;
                 height: auto;
                 display: block;
-                margin: 0 auto 2px auto;
+                margin: 0 auto 8px auto;
             }
 
             .print-header-title {
@@ -350,7 +350,7 @@
 
             .print-person-grid {
                 width: 100%;
-                margin-bottom: 4px;
+                margin-bottom: 8px;
                 font-size: 9pt;
                 border-collapse: collapse;
             }
@@ -858,7 +858,7 @@
             printableArea.innerHTML = '';
 
             const dataList = activePALData || [];
-            const ROWS_PER_PAGE = 38; 
+            const ROWS_PER_PAGE = 37; 
             const totalPages = Math.max(1, Math.ceil(dataList.length / ROWS_PER_PAGE));
 
             const hariIni = new Date();
