@@ -8,6 +8,9 @@
     <!-- Supabase JS Client Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+    <!-- SweetAlert2 Library untuk Popup Modern -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
         * {
             box-sizing: border-box;
@@ -317,15 +320,17 @@
                 break-after: page !important;
                 box-sizing: border-box;
                 padding-bottom: 2mm;
+                overflow: hidden !important;
             }
 
             .print-page-block:last-child {
                 page-break-after: avoid !important;
-                break-after: avoid !important;
+                break-after: auto !important;
             }
 
             .print-content-wrap {
                 flex-grow: 1;
+                overflow: hidden !important;
             }
 
             .print-header-layout {
@@ -415,7 +420,7 @@
             }
         }
 
-        @media (max-width: 900px) { .cards-container { grid-template-columns: repeat(2, 1fr); } }
+        /*@media (max-width: 900px) { .cards-container { grid-template-columns: repeat(2, 1fr); } } dihapus jika perlu*/
         @media (max-width: 600px) { 
             .cards-container { grid-template-columns: 1fr; } 
             .profile-header-card { flex-direction: column; text-align: center; }
@@ -431,7 +436,7 @@
         <div class="container">
             <div id="view-home">
                 <h1>Personnel Ability List TCR</h1>
-                <p class="subtitle">CI 584461</p>
+                <p class="subtitle">584461</p>
                 <div class="btn-group">
                     <button type="button" class="btn btn-primary" onclick="window.bukaHalamanLogin()">Login</button>
                     <button type="button" class="btn btn-secondary" onclick="window.aksesTamu()">Masuk Tanpa Akun</button>
@@ -694,7 +699,7 @@
             document.getElementById('search-personnel').value = '';
             
             const container = document.getElementById('personnel-container');
-            container.innerHTML = '<p style="text-align:center; grid-column: 1/-1; padding: 40px; color: #718096;">Memuat data dari Supabase...</p>';
+            container.innerHTML = '<p style="text-align:center; grid-column: 1/-1; padding: 40px; color: #718096;">Memuat data...</p>';
 
             if (!window.db) {
                 container.innerHTML = '<p style="text-align:center; grid-column: 1/-1; padding: 40px; color: #e53e3e;">Supabase Client belum dikonfigurasi.</p>';
@@ -716,7 +721,7 @@
                 renderPersonil(data);
             } catch (err) {
                 console.error("Error:", err);
-                container.innerHTML = '<p style="text-align:center; color:#e53e3e; grid-column: 1/-1; padding: 40px;">Gagal mengambil data dari Supabase.</p>';
+                container.innerHTML = '<p style="text-align:center; color:#e53e3e; grid-column: 1/-1; padding: 40px;">Gagal mengambil data.</p>';
             }
         };
 
@@ -788,7 +793,7 @@
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color: #718096;">Memuat daftar Personel Ability List...</td></tr>';
 
             if (!window.db) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color: #e53e3e;">Supabase belum siap.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color: #e53e3e;">Data .</td></tr>';
                 return;
             }
 
@@ -858,26 +863,86 @@
             printableArea.innerHTML = '';
 
             const dataList = activePALData || [];
-            const ROWS_PER_PAGE = 37; 
-            const totalPages = Math.max(1, Math.ceil(dataList.length / ROWS_PER_PAGE));
+            
+            // 1. Buat kontainer bayangan (off-screen) untuk mengukur tinggi piksel per baris
+            const tempDiv = document.createElement('div');
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.visibility = 'hidden';
+            tempDiv.style.width = '210mm'; // Kunci lebar menyerupai A4 agar simulasi wrap teks presisi
+            tempDiv.style.padding = '1cm 1.2cm'; 
+            document.body.appendChild(tempDiv);
+
+            // Batas aman tinggi tabel per halaman dalam piksel (Tinggi A4 - Header - Footer)
+            const MAX_TABLE_HEIGHT = 660; 
+            
+            tempDiv.innerHTML = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 9pt; table-layout: fixed;">
+                    <tbody id="temp-tbody"></tbody>
+                </table>
+            `;
+            const tempTbody = document.getElementById('temp-tbody');
+
+            let pages = [];
+            let currentPageRows = [];
+            let currentHeight = 0;
+
+            // 2. Kalkulasi dinamis: Cek tinggi tiap baris satu per satu
+            dataList.forEach((item, idx) => {
+                const desc = item.DESCRIPTION || "-";
+                const pn = item.PART_NUMBER || "-";
+                const ata = item.ATA || "-";
+                const auth = item.RELATED_AUTH || "-";
+
+                // Simulasi baris dengan lebar kolom persis seperti di CSS print Anda
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="width: 26px; padding: 1.8px 3px; word-wrap: break-word;">${idx + 1}</td>
+                    <td style="width: 275px; padding: 1.8px 3px; word-wrap: break-word;">${desc}</td>
+                    <td style="width: 125px; padding: 1.8px 3px; word-wrap: break-word;">${pn}</td>
+                    <td style="width: 60px; padding: 1.8px 3px; white-space: nowrap;">${ata}</td>
+                    <td style="width: 100px; padding: 1.8px 3px; word-wrap: break-word;">${auth}</td>
+                `;
+                tempTbody.appendChild(tr);
+                
+                // Ambil tinggi aktual baris (termasuk jika teksnya wrap 2-3 baris)
+                const rowHeight = tr.getBoundingClientRect().height || tr.offsetHeight;
+                
+                // Jika ditambah baris ini tinggi melebihi batas aman, lempar ke halaman baru
+                if (currentHeight + rowHeight > MAX_TABLE_HEIGHT && currentPageRows.length > 0) {
+                    pages.push(currentPageRows);
+                    currentPageRows = [];
+                    currentHeight = 0;
+                }
+                
+                currentPageRows.push({ item, index: idx + 1 });
+                currentHeight += rowHeight;
+                tempTbody.innerHTML = ''; // Bersihkan untuk pengukuran baris berikutnya
+            });
+
+            if (currentPageRows.length > 0) {
+                pages.push(currentPageRows);
+            }
+            document.body.removeChild(tempDiv); // Hapus elemen bayangan
+
+            // 3. Render Hasil Halaman
+            const personNama = selectedPerson.NAMA || "-";
+            const personId = selectedPerson.ID !== undefined ? selectedPerson.ID : "-";
+            const personJabatan = selectedPerson.JABATAN || "-";
 
             const hariIni = new Date();
             const opsiTanggal = { day: '2-digit', month: 'short', year: 'numeric' };
             const tanggalCetak = hariIni.toLocaleDateString('en-GB', opsiTanggal);
 
-            const personNama = selectedPerson.NAMA || "-";
-            const personId = selectedPerson.ID !== undefined ? selectedPerson.ID : "-";
-            const personJabatan = selectedPerson.JABATAN || "-";
+            const totalPages = Math.max(1, pages.length);
 
-            for (let page = 0; page < totalPages; page++) {
-                const chunk = dataList.slice(page * ROWS_PER_PAGE, (page + 1) * ROWS_PER_PAGE);
-                
+            pages.forEach((pageData, pageIndex) => {
                 let rowsHtml = '';
-                if (chunk.length === 0) {
+                if (pageData.length === 0) {
                     rowsHtml = '<tr><td colspan="5" style="text-align:center; padding:10px;">Tidak ada data PAL</td></tr>';
                 } else {
-                    chunk.forEach((item, idx) => {
-                        const nomorUrut = page * ROWS_PER_PAGE + idx + 1;
+                    pageData.forEach((rowObj) => {
+                        const nomorUrut = rowObj.index;
+                        const item = rowObj.item;
                         const desc = item.DESCRIPTION || "-";
                         const pn = item.PART_NUMBER || "-";
                         const ata = item.ATA || "-";
@@ -950,7 +1015,7 @@
                                     <div style="font-size: 9pt; font-weight: bold; color: #000;">ANDRYAN PUTRA</div>
                                 </td>
                                 <td class="ft-col-page">
-                                    Page ${page + 1} of ${totalPages}
+                                    Page ${pageIndex + 1} of ${totalPages}
                                 </td>
                             </tr>
                         </table>
@@ -959,11 +1024,11 @@
                 `;
 
                 printableArea.appendChild(pageDiv);
-            }
+            });
 
             setTimeout(() => {
                 window.print();
-            }, 200);
+            }, 300);
         };
 
         // PROSES LOGIN - TABEL Users (KOLOM: ID, Password, Nama, Jabatan)
@@ -1067,7 +1132,14 @@
                 }
 
                 console.log("Data berhasil masuk:", data);
-                alert("Data Capability berhasil ditambahkan!");
+
+                Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: 'Data Capability berhasil ditambahkan.',
+                showConfirmButton: false,
+                timer: 1800
+                });
         
                 window.tutupModalCapability();
                 event.target.reset();
