@@ -271,8 +271,8 @@
 
         /* Pengaturan Lebar dan Alignment per Kolom */
         .web-table th:nth-child(1), .web-table td:nth-child(1) { width: 6%; text-align: center; } /* NO */
-        .web-table th:nth-child(2), .web-table td:nth-child(2) { width: 42%; text-align: left; }   /* DESCRIPTION */
-        .web-table th:nth-child(3), .web-table td:nth-child(3) { width: 28%; text-align: left; }   /* PART NUMBER */
+        .web-table th:nth-child(2), .web-table td:nth-child(2) { width: 42%; text-align: center; }   /* DESCRIPTION */
+        .web-table th:nth-child(3), .web-table td:nth-child(3) { width: 28%; text-align: center; }   /* PART NUMBER */
         .web-table th:nth-child(4), .web-table td:nth-child(4) { width: 10%; text-align: center; white-space: nowrap; } /* ATA */
         .web-table th:nth-child(5), .web-table td:nth-child(5) { width: 14%; text-align: center; } /* RELATED AUTHORITY */
 
@@ -785,7 +785,7 @@
             document.getElementById('view-personnel-detail').classList.remove('hidden');
 
             const tbody = document.getElementById('pal-table-body');
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color: #718096;">Memuat daftar kemampuan (PAL)...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color: #718096;">Memuat daftar Personel Ability List...</td></tr>';
 
             if (!window.db) {
                 tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color: #e53e3e;">Supabase belum siap.</td></tr>';
@@ -1025,43 +1025,62 @@
                 return;
             }
 
-            const personId = document.getElementById('cap-person-id').value;
-            const desc = document.getElementById('cap-desc').value;
-            const pn = document.getElementById('cap-pn').value;
-            const ata = document.getElementById('cap-ata').value;
-            const auth = document.getElementById('cap-auth').value;
+            const rawPersonId = document.getElementById('cap-person-id').value;
+            const desc = document.getElementById('cap-desc').value.trim();
+            const pn = document.getElementById('cap-pn').value.trim();
+            const ata = document.getElementById('cap-ata').value.trim();
+            const auth = document.getElementById('cap-auth').value.trim();
+
+            // 1. Dapatkan format ID_PERSONEL (otomatis menyesuaikan apakah angka atau teks)
+            // Jika ID bernilai numerik murni (misal: "580126"), konversi ke Integer
+            const formattedPersonId = (!isNaN(rawPersonId) && rawPersonId !== "") 
+                ? parseInt(rawPersonId, 10) 
+                : String(rawPersonId).trim();
+
+            // Payload data yang akan dikirim
+            const payload = {
+                ID_PERSONEL: formattedPersonId,
+                DESCRIPTION: desc,
+                PART_NUMBER: pn,
+                ATA: ata,
+                RELATED_AUTH: auth
+            };
+
+            console.log("Mengirim data ke Supabase:", payload);
 
             try {
+                // 2. Jalankan Insert ke Supabase
                 const { data, error } = await window.db
                     .from('Data_PAL')
-                    .insert([
-                        {
-                            ID_PERSONEL: personId,
-                            DESCRIPTION: desc,
-                            PART_NUMBER: pn,
-                            ATA: ata,
-                            RELATED_AUTH: auth
-                        }
-                    ]);
+                    .insert([payload])
+                    .select(); // Menggunakan .select() untuk memastikan Supabase mengembalikan baris data baru
 
                 if (error) {
-                    console.error("Error Insert Capability:", error);
-                    alert("Gagal menyimpan ke Supabase: " + error.message);
+                    console.error("Detail Error Supabase:", error);
+                    alert("Gagal menyimpan ke Supabase:\n" + error.message + "\n\nHint: " + (error.hint || "Periksa RLS di Supabase."));
                     return;
                 }
 
-                alert("Data Capability berhasil ditambahkan ke Supabase!");
+                if (!data || data.length === 0) {
+                    alert("Proses insert tidak menghasilkan data. Pastikan Row Level Security (RLS) di tabel Data_PAL sudah dikonfigurasi.");
+                    return;
+                }
+
+                console.log("Data berhasil masuk:", data);
+                alert("Data Capability berhasil ditambahkan!");
+        
                 window.tutupModalCapability();
                 event.target.reset();
 
+                // 3. Refresh otomatis daftar PAL pada halaman
                 if (selectedPerson) {
-                    window.bukaDetailPersonil(selectedPerson.ID);
+            window.bukaDetailPersonil(selectedPerson.ID);
                 }
 
             } catch (err) {
-                console.error("Error Sync:", err);
-                alert("Terjadi kesalahan koneksi saat mengirim data ke Supabase.");
-            }
+                console.error("Error Koneksi/Sync:", err);
+                alert("Terjadi kesalahan sistem saat mengirim data ke Supabase.");
+            }     
         };
 
         window.togglePasswordVisibility = function() {
