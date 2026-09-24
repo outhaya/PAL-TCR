@@ -273,11 +273,11 @@
         }
 
         /* Pengaturan Lebar dan Alignment per Kolom */
-        .web-table th:nth-child(1), .web-table td:nth-child(1) { width: 6%; text-align: center; } /* NO */
-        .web-table th:nth-child(2), .web-table td:nth-child(2) { width: 42%; text-align: center; }   /* DESCRIPTION */
-        .web-table th:nth-child(3), .web-table td:nth-child(3) { width: 28%; text-align: center; }   /* PART NUMBER */
-        .web-table th:nth-child(4), .web-table td:nth-child(4) { width: 10%; text-align: center; white-space: nowrap; } /* ATA */
-        .web-table th:nth-child(5), .web-table td:nth-child(5) { width: 14%; text-align: center; } /* RELATED AUTHORITY */
+        .col-no { width: 26px; text-align: center; }
+        .col-desc { width: 275px; text-align: left; }
+        .col-pn { width: 125px; text-align: left; }
+        .col-ata { width: 60px; text-align: center; white-space: nowrap !important; }
+        .col-auth { width: 100px; text-align: center; }
 
         #printable-area { display: none; }
 
@@ -556,24 +556,34 @@
             <div class="pal-table-wrapper">
                 <div class="pal-action-bar">
                     <input type="text" id="search-pal" class="pal-search-box" placeholder="Cari Part Number atau Deskripsi..." onkeyup="window.filterPAL()">
-                    <button type="button" id="btn-add-capability" class="btn-add-cap-inline hidden" onclick="window.bukaModalCapability()">
-                        + Tambah Capability
-                    </button>
+                
+                    <!-- [TITIK PERUBAHAN 1]: Area Tombol Aksi Kanan -->
+                    <div id="admin-action-buttons" style="display: none; gap: 10px; justify-content: flex-end;">
+                        <button type="button" id="btn-toggle-edit" class="btn-add-cap-inline" style="background-color: #6c757d;" onclick="window.toggleEditMode()">
+                            ✏️ <span id="text-toggle-edit">Edit</span>
+                        </button>
+                        <button type="button" class="btn-add-cap-inline" style="background-color: #0f4c3a;" onclick="window.bukaModalCapability()">
+                            + Tambah Capability
+                        </button>
+                    </div>
                 </div>
 
                 <div style="overflow-x: auto;">
                     <table class="web-table">
                         <thead>
                             <tr>
-                                <th>NO</th>
-                                <th>DESCRIPTION</th>
-                                <th>PART NUMBER</th>
-                                <th>ATA</th>
-                                <th>RELATED AUTHORITY</th>
+                                <!-- [TITIK PERUBAHAN 2]: Header Pilihan & Header Aksi (Awalnya tersembunyi dengan style="display: none;") -->
+                                <th class="col-edit-mode" style="display: none; width: 40px; text-align: center;"> </th>
+                                <th class="col-no" style="white-space: nowrap;">NO</th>
+                                <th class="col-desc" style="text-align: center;">DESCRIPTION</th>
+                                <th class="col-pn" style="text-align: center;">PART NUMBER</th>
+                                <th class="col-ata">ATA</th>
+                                <th class="col-auth">RELATED AUTHORITY</th>
+                                <th class="col-edit-mode" style="display: none; text-align: center; width: 70px;">ACTION</th>
                             </tr>
                         </thead>
                         <tbody id="pal-table-body">
-                            <!-- Data PAL diisi via JavaScript -->
+                           <!-- Data PAL diisi via JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -652,7 +662,7 @@
         window.aksesTamu = function() {
             currentUser = null;
             document.getElementById('user-greeting').innerText = "Halo, Guest";
-            document.getElementById('btn-add-capability').classList.add('hidden');
+            document.getElementById('admin-action-buttons').style.display = 'none';;
 
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('view-dashboard').classList.remove('hidden');
@@ -781,9 +791,9 @@
             document.getElementById('search-pal').value = '';
 
             if (currentUser) {
-                document.getElementById('btn-add-capability').classList.remove('hidden');
+            document.getElementById('admin-action-buttons').style.display = 'flex';
             } else {
-                document.getElementById('btn-add-capability').classList.add('hidden');
+            document.getElementById('admin-action-buttons').style.display = 'none';
             }
 
             document.getElementById('view-personnel-list').classList.add('hidden');
@@ -822,27 +832,47 @@
             tbody.innerHTML = '';
 
             if (dataList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color: #718096;">Belum ada daftar PAL untuk personil ini.</td></tr>';
+                // colspan diubah jadi 7 karena ada tambahan 2 kolom (SELECT dan ACTION)
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color: #718096;">Belum ada daftar PAL untuk personil ini.</td></tr>';
                 return;
-            }
+                }
 
             dataList.forEach((item, index) => {
                 const desc = item.DESCRIPTION || "-";
                 const pn = item.PART_NUMBER || "-";
                 const ata = item.ATA || "-";
                 const auth = item.RELATED_AUTH || "-";
+        
+                // Pastikan tabel "Data_PAL" di Supabase memiliki kolom primary key bernama "id" (huruf kecil)
+                const itemId = item.id; 
+
+                // Tentukan apakah kolom edit/aksi harus tampil berdasarkan status isEditMode
+                const displayStyle = window.isEditMode ? 'table-cell' : 'none';
 
                 const tr = `
                     <tr>
-                        <td style="text-align: center;">${index + 1}</td>
-                        <td style="text-align: left;">${desc}</td>
-                        <td style="text-align: left;"><strong>${pn}</strong></td>
-                        <td style="text-align: center;">${ata}</td>
-                        <td style="text-align: center;">${auth}</td>
+                        <td class="col-edit-mode" style="display: ${displayStyle}; text-align: center;">
+                           <input type="checkbox" class="row-checkbox" value="${itemId}">
+                        </td>
+                        <td class="col-no" style="white-space: nowrap;">${index + 1}</td>
+                        <td class="col-desc">${desc}</td>
+                        <td class="col-pn"><strong>${pn}</strong></td>
+                        <td class="col-ata" style="white-space: nowrap;">${ata}</td>
+                        <td class="col-auth">${auth}</td>
+                        <td class="col-edit-mode" style="display: ${displayStyle}; text-align: center;">
+                            <button type="button" onclick="window.editBarisCapability('${itemId}', '${escapeQuotes(desc)}', '${escapeQuotes(pn)}', '${escapeQuotes(ata)}', '${escapeQuotes(auth)}')" title="Edit" style="background:none; border:none; cursor:pointer; font-size:16px;">✏️</button>
+                           <button type="button" onclick="window.hapusBarisCapability('${itemId}')" title="Hapus" style="background:none; border:none; cursor:pointer; font-size:16px; margin-left: 6px;">🗑️</button>
+                        </td>
                     </tr>
                 `;
                 tbody.innerHTML += tr;
             });
+        }
+
+        // Helper: Mencegah error jika ada tanda petik (') pada teks description/part number
+        function escapeQuotes(str) {
+            if (!str) return '';
+            return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
         }
 
         window.filterPAL = function() {
@@ -854,6 +884,135 @@
                 return desc.includes(keyword) || pn.includes(keyword) || ata.includes(keyword);
             });
             renderPALTable(filtered);
+        };
+
+        // Variabel status mode edit
+        window.isEditMode = false;
+
+        // Fungsi untuk memunculkan kolom select & tombol hapus/edit
+        window.toggleEditMode = function() {
+            window.isEditMode = !window.isEditMode;
+            const btn = document.getElementById('btn-toggle-edit');
+            const btnText = document.getElementById('text-toggle-edit');
+            const editCols = document.querySelectorAll('.col-edit-mode');
+
+            if (window.isEditMode) {
+                btn.style.backgroundColor = '#ffc107'; // Warna kuning peringatan
+                btn.style.color = '#white';
+                btnText.innerText = 'Selesai';
+                editCols.forEach(col => col.style.display = 'table-cell');
+            } else {
+                btn.style.backgroundColor = '#6c757d'; // Warna abu-abu normal
+                btn.style.color = '#fff';
+                btnText.innerText = 'Edit';
+               editCols.forEach(col => col.style.display = 'none');
+            }
+
+            // Render ulang tabel agar kolom menyesuaikan
+            if (selectedPerson) {
+                renderPALTable(activePALData);
+            }
+        };
+
+        // Fungsi Edit (Memunculkan Popup SweetAlert2)
+        window.editBarisCapability = async function(id, desc, pn, ata, auth) {
+            if (!id || id === 'undefined') {
+                Swal.fire('Error', 'ID baris tidak ditemukan. Pastikan tabel Data_PAL di Supabase memiliki primary key bernama "id".', 'error');
+                return;
+            }
+
+            const { value: formValues } = await Swal.fire({
+                    title: 'Edit Capability',
+            html: `
+                    <div style="text-align: left; margin-bottom: 10px;">
+                        <label style="font-size: 13px; font-weight: bold;">Description</label>
+                        <input id="swal-desc" class="swal2-input" style="width: 90%; margin: 5px 0; font-size: 14px;" value="${desc}">
+                    </div>
+                    <div style="text-align: left; margin-bottom: 10px;">
+                        <label style="font-size: 13px; font-weight: bold;">Part Number</label>
+                        <input id="swal-pn" class="swal2-input" style="width: 90%; margin: 5px 0; font-size: 14px;" value="${pn}">
+                    </div>
+                    <div style="text-align: left; margin-bottom: 10px;">
+                        <label style="font-size: 13px; font-weight: bold;">ATA Chapter</label>
+                        <input id="swal-ata" class="swal2-input" style="width: 90%; margin: 5px 0; font-size: 14px;" value="${ata}">
+                    </div>
+                    <div style="text-align: left; margin-bottom: 10px;">
+                        <label style="font-size: 13px; font-weight: bold;">Related Authority</label>
+                        <input id="swal-auth" class="swal2-input" style="width: 90%; margin: 5px 0; font-size: 14px;" value="${auth}">
+                    </div>
+               `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Simpan Perubahan',
+                cancelButtonText: 'Batal',
+                preConfirm: () => {
+                    return {
+                        DESCRIPTION: document.getElementById('swal-desc').value.trim(),
+                        PART_NUMBER: document.getElementById('swal-pn').value.trim(),
+                        ATA: document.getElementById('swal-ata').value.trim(),
+                        RELATED_AUTH: document.getElementById('swal-auth').value.trim()
+                    }       
+                }
+            });
+
+            if (formValues) {
+                try {
+                    // Update ke database Supabase
+                    const { error } = await window.db
+                        .from('Data_PAL')
+                        .update(formValues)
+                        .eq('id', id);
+
+                    if (error) throw error;
+
+                    Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Data berhasil diperbarui.', showConfirmButton: false, timer: 1500 });
+            
+                    // Refresh tabel
+                    window.bukaDetailPersonil(selectedPerson.ID); 
+                } catch (err) {
+                    console.error("Error Update:", err);
+                    Swal.fire('Gagal!', err.message || 'Gagal memperbarui data.', 'error');
+                }
+            }
+        };
+
+        // Fungsi Hapus (Memunculkan Peringatan SweetAlert2)
+        window.hapusBarisCapability = async function(id) {
+            if (!id || id === 'undefined') {
+                Swal.fire('Error', 'ID baris tidak ditemukan.', 'error');
+                return;
+            }
+
+            const result = await Swal.fire({
+                title: 'Hapus data ini?',
+                text: "Data yang dihapus tidak bisa dikembalikan!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Hapus!',
+                cancelButtonText: 'Batal'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    // Hapus dari database Supabase
+                    const { error } = await window.db
+                        .from('Data_PAL')
+                        .delete()
+                        .eq('id', id);
+
+                    if (error) throw error;
+
+                    Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data berhasil dihapus.', showConfirmButton: false, timer: 1500 });
+            
+                    // Refresh tabel
+                    window.bukaDetailPersonil(selectedPerson.ID);
+                } catch (err) {
+                    console.error("Error Hapus:", err);
+                    Swal.fire('Gagal!', err.message || 'Gagal menghapus data.', 'error');
+                }
+            }
         };
 
         window.downloadPDF = function() {
