@@ -1168,10 +1168,18 @@
                                 <td class="ft-col-date">
                                     <strong>Date:</strong><br>${tanggalCetak}
                                 </td>
-                                <td class="ft-col-approval">
+                                <td class="ft-col-approval" style="position: relative; text-align: center; height: 75px; vertical-align: top; padding-top: 4px;">
                                     <strong>Approved by Structure & Cabin Workshop Division Head</strong>
-                                    <div class="signature-space"></div>
-                                    <div style="font-size: 9pt; font-weight: bold; color: #000;">ANDRYAN PUTRA</div>
+    
+                                    <!-- Posisi tanda tangan dengan height 60px dan digeser pas di tengah ruang kosong -->
+                                    <div style="position: absolute; left: 0; right: 0; top: 12px; display: flex; justify-content: center; z-index: 1;">
+                                        <img src="https://lh3.googleusercontent.com/d/1CaMU0Lzn7NPDBsDZVbbD3UFDhVKRr0HJ" alt="E-Sign" style="height: 60px; object-fit: contain;">
+                                    </div>
+
+                                    <!-- Nama ditaruh di bawah dengan jarak yang menyesuaikan ukuran gambar 60px -->
+                                    <div style="position: relative; z-index: 2; margin-top: 36px;">
+                                        <div style="font-size: 9pt; font-weight: bold; color: #000;">ANDRYAN PUTRA</div>
+                                    </div>
                                 </td>
                                 <td class="ft-col-page">
                                     Page ${pageIndex + 1} of ${totalPages}
