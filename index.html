@@ -1021,7 +1021,20 @@
             const printableArea = document.getElementById('printable-area');
             printableArea.innerHTML = '';
 
-            const dataList = activePALData || [];
+            const dataList = [...(activePALData || [])].sort((a, b) => {
+                const ataA = String(a.ATA || "").trim();
+                const ataB = String(b.ATA || "").trim();
+    
+                // Urutkan berdasarkan ATA terlebih dahulu (terkecil ke terbesar)
+                if (ataA !== ataB) {
+                    return ataA.localeCompare(ataB, undefined, { numeric: true, sensitivity: 'base' });
+                }
+    
+                // Jika ATA sama, urutkan berdasarkan Part Number (dari kecil ke besar)
+                const pnA = String(a.PART_NUMBER || "").trim();
+                const pnB = String(b.PART_NUMBER || "").trim();
+                    return pnA.localeCompare(pnB, undefined, { numeric: true, sensitivity: 'base' });
+            });
             
             // 1. Buat kontainer bayangan (off-screen) untuk mengukur tinggi piksel per baris
             const tempDiv = document.createElement('div');
